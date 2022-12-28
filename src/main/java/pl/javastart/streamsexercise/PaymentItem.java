@@ -37,4 +37,5 @@ public class PaymentItem {
     public void setFinalPrice(BigDecimal finalPrice) {
         this.finalPrice = finalPrice;
     }
+
 }

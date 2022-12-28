@@ -2,13 +2,15 @@ package pl.javastart.streamsexercise;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 class PaymentService {
 
-    private PaymentRepository paymentRepository;
-    private DateTimeProvider dateTimeProvider;
+    private final PaymentRepository paymentRepository;
+    private final DateTimeProvider dateTimeProvider;
 
     PaymentService(PaymentRepository paymentRepository, DateTimeProvider dateTimeProvider) {
         this.paymentRepository = paymentRepository;
@@ -17,72 +19,122 @@ class PaymentService {
 
     /*
     Znajdź i zwróć płatności posortowane po dacie malejąco
+    zrobione
      */
     List<Payment> findPaymentsSortedByDateDesc() {
-        throw new RuntimeException("Not implemented");
+        return paymentRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Payment::getPaymentDate).reversed())
+                .collect(Collectors.toList());
     }
 
     /*
     Znajdź i zwróć płatności dla aktualnego miesiąca
+    zrobione
      */
     List<Payment> findPaymentsForCurrentMonth() {
-        throw new RuntimeException("Not implemented");
+        YearMonth currentMonth = YearMonth.from(dateTimeProvider.zonedDateTimeNow());
+        return findPaymentsForGivenMonth(currentMonth);
     }
 
     /*
     Znajdź i zwróć płatności dla wskazanego miesiąca
+    zrobione
      */
     List<Payment> findPaymentsForGivenMonth(YearMonth yearMonth) {
-        throw new RuntimeException("Not implemented");
+        return paymentRepository.findAll()
+                .stream()
+                .filter(payment -> YearMonth.from(payment.getPaymentDate()).equals(yearMonth))
+                .collect(Collectors.toList());
     }
 
     /*
     Znajdź i zwróć płatności dla ostatnich X dzni
+    zrobione
      */
     List<Payment> findPaymentsForGivenLastDays(int days) {
-        throw new RuntimeException("Not implemented");
+        return paymentRepository.findAll()
+                .stream()
+                .filter(payment -> payment.getPaymentDate().isAfter(dateTimeProvider.zonedDateTimeNow().minusDays(days)))
+                .collect(Collectors.toList());
     }
 
     /*
     Znajdź i zwróć płatności z jednym elementem
+    zrobione
      */
     Set<Payment> findPaymentsWithOnePaymentItem() {
-        throw new RuntimeException("Not implemented");
+        return paymentRepository.findAll()
+                .stream()
+                .filter(payment -> payment.getPaymentItems().size() == 1)
+                .collect(Collectors.toSet());
+
     }
 
     /*
     Znajdź i zwróć nazwy produktów sprzedanych w aktualnym miesiącu
+    zrobione
      */
     Set<String> findProductsSoldInCurrentMonth() {
-        throw new RuntimeException("Not implemented");
+        return findPaymentsForCurrentMonth()
+                .stream()
+                .flatMap(payment -> payment.getPaymentItems().stream().map(PaymentItem::getName))
+                .collect(Collectors.toSet());
     }
 
     /*
     Policz i zwróć sumę sprzedaży dla wskazanego miesiąca
+    zrobione
      */
     BigDecimal sumTotalForGivenMonth(YearMonth yearMonth) {
-        throw new RuntimeException("Not implemented");
+        return findPaymentsForGivenMonth(yearMonth)
+                .stream()
+                .flatMap(payment -> payment.getPaymentItems().stream())
+                .map(PaymentItem::getFinalPrice)
+                .reduce(BigDecimal.valueOf(0), BigDecimal::add);
     }
 
     /*
     Policz i zwróć sumę przeyznanaych rabatów dla wskazanego miesiąca
+    zrobione
      */
     BigDecimal sumDiscountForGivenMonth(YearMonth yearMonth) {
-        throw new RuntimeException("Not implemented");
+        return findPaymentsForGivenMonth(yearMonth)
+                .stream()
+                .flatMap(payment -> payment.getPaymentItems().stream())
+                .map(paymentItem -> paymentItem.getRegularPrice().subtract(paymentItem.getFinalPrice()))
+                .reduce(BigDecimal.valueOf(0), BigDecimal::add);
     }
 
     /*
     Znajdź i zwróć płatności dla użytkownika z podanym mailem
+    zrobione
      */
     List<PaymentItem> getPaymentsForUserWithEmail(String userEmail) {
-        throw new RuntimeException("Not implemented");
+        return paymentRepository.findAll()
+                .stream()
+                .filter(payment -> payment.getUser().getEmail().equals(userEmail))
+                .flatMap(payment -> payment.getPaymentItems().stream())
+                .collect(Collectors.toList());
+
     }
 
     /*
     Znajdź i zwróć płatności, których wartość przekracza wskazaną granicę
      */
     Set<Payment> findPaymentsWithValueOver(int value) {
-        throw new RuntimeException("Not implemented");
+        return paymentRepository.findAll()
+                .stream()
+                .filter(payment -> isValueOver(payment, value))
+                .collect(Collectors.toSet());
     }
 
+    private boolean isValueOver(Payment payment, int value) {
+        return calculatePaymentValue(payment).compareTo(BigDecimal.valueOf(value)) > 0;
+    }
+
+    private BigDecimal calculatePaymentValue(Payment payment) {
+        return payment.getPaymentItems().stream()
+                .map(PaymentItem::getFinalPrice).reduce(BigDecimal.valueOf(0), BigDecimal::add);
+    }
 }
