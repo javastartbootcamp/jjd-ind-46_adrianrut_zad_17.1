@@ -2,17 +2,15 @@ package pl.javastart.streamsexercise;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
-import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 
 class PaymentService {
 
-    private PaymentRepository paymentRepository;
-    private DateTimeProvider dateTimeProvider;
+    private final PaymentRepository paymentRepository;
+    private final DateTimeProvider dateTimeProvider;
 
     PaymentService(PaymentRepository paymentRepository, DateTimeProvider dateTimeProvider) {
         this.paymentRepository = paymentRepository;
@@ -127,11 +125,16 @@ class PaymentService {
     Set<Payment> findPaymentsWithValueOver(int value) {
         return paymentRepository.findAll()
                 .stream()
-                .filter(payment -> payment.getPaymentItems().stream()
-                        .map(PaymentItem::getFinalPrice).reduce(BigDecimal.valueOf(0), BigDecimal::add)
-                        .compareTo(BigDecimal.valueOf(value));
+                .filter(payment -> isValueOver(payment, value))
+                .collect(Collectors.toSet());
     }
 
+    private boolean isValueOver(Payment payment, int value) {
+        return calculatePaymentValue(payment).compareTo(BigDecimal.valueOf(value)) > 0;
+    }
 
-
+    private BigDecimal calculatePaymentValue(Payment payment) {
+        return payment.getPaymentItems().stream()
+                .map(PaymentItem::getFinalPrice).reduce(BigDecimal.valueOf(0), BigDecimal::add);
+    }
 }
