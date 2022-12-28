@@ -2,10 +2,12 @@ package pl.javastart.streamsexercise;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
 
 class PaymentService {
 
@@ -33,10 +35,8 @@ class PaymentService {
     zrobione
      */
     List<Payment> findPaymentsForCurrentMonth() {
-        return paymentRepository.findAll()
-                .stream()
-                .filter(payment -> payment.getPaymentDate().isAfter(dateTimeProvider.zonedDateTimeNow().minusDays(10)))
-                .collect(Collectors.toList());
+        YearMonth currentMonth = YearMonth.from(dateTimeProvider.zonedDateTimeNow());
+        return findPaymentsForGivenMonth(currentMonth);
     }
 
     /*
@@ -46,7 +46,7 @@ class PaymentService {
     List<Payment> findPaymentsForGivenMonth(YearMonth yearMonth) {
         return paymentRepository.findAll()
                 .stream()
-                .filter(payment -> payment.getPaymentDate().getMonth().equals(yearMonth.getMonth()))
+                .filter(payment -> YearMonth.from(payment.getPaymentDate()).equals(yearMonth))
                 .collect(Collectors.toList());
     }
 
@@ -68,7 +68,7 @@ class PaymentService {
     Set<Payment> findPaymentsWithOnePaymentItem() {
         return paymentRepository.findAll()
                 .stream()
-                .filter(payment -> payment.getPaymentItems().size() <= 1)
+                .filter(payment -> payment.getPaymentItems().size() == 1)
                 .collect(Collectors.toSet());
 
     }
@@ -78,24 +78,22 @@ class PaymentService {
     zrobione
      */
     Set<String> findProductsSoldInCurrentMonth() {
-        return paymentRepository.findAll()
+        return findPaymentsForCurrentMonth()
                 .stream()
-                .filter(payment -> payment.getPaymentDate().isAfter(dateTimeProvider.zonedDateTimeNow().minusDays(10)))
                 .flatMap(payment -> payment.getPaymentItems().stream().map(PaymentItem::getName))
                 .collect(Collectors.toSet());
     }
 
     /*
     Policz i zwróć sumę sprzedaży dla wskazanego miesiąca
+    zrobione
      */
     BigDecimal sumTotalForGivenMonth(YearMonth yearMonth) {
-        return paymentRepository.findAll()
+        return findPaymentsForGivenMonth(yearMonth)
                 .stream()
-                .filter(payment -> payment.getPaymentDate().getMonth().equals(yearMonth.getMonth()))
                 .flatMap(payment -> payment.getPaymentItems().stream())
                 .map(PaymentItem::getFinalPrice)
                 .reduce(BigDecimal.valueOf(0), BigDecimal::add);
-
     }
 
     /*
@@ -103,9 +101,8 @@ class PaymentService {
     zrobione
      */
     BigDecimal sumDiscountForGivenMonth(YearMonth yearMonth) {
-        return paymentRepository.findAll()
+        return findPaymentsForGivenMonth(yearMonth)
                 .stream()
-                .filter(payment -> payment.getPaymentDate().getMonth().equals(yearMonth.getMonth()))
                 .flatMap(payment -> payment.getPaymentItems().stream())
                 .map(paymentItem -> paymentItem.getRegularPrice().subtract(paymentItem.getFinalPrice()))
                 .reduce(BigDecimal.valueOf(0), BigDecimal::add);
@@ -131,8 +128,10 @@ class PaymentService {
         return paymentRepository.findAll()
                 .stream()
                 .filter(payment -> payment.getPaymentItems().stream()
-                        .filter(paymentItem -> paymentItem.getFinalPrice().compareTo(BigDecimal.valueOf(value)) < 0).isParallel())
-                .collect(Collectors.toSet());
+                        .map(PaymentItem::getFinalPrice).reduce(BigDecimal.valueOf(0), BigDecimal::add)
+                        .compareTo(BigDecimal.valueOf(value));
     }
+
+
 
 }
